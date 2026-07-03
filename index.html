@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atmospheric — Dynamic Weather Dashboard</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&amp;family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary": "#005CBB",
+          "background-light": "#FDFBFE",
+          "background-dark": "#101922",
+          "surface": "#EAF1FB",
+          "surface-variant": "#D3E4F9",
+          "text-main": "#1A1C1E",
+          "text-muted": "#42474E",
+          "accent": "#F9AA06",
+          "danger": "#B3261E",
+        },
+        fontFamily: {
+          "display": ["Outfit", "sans-serif"],
+          "body": ["DM Sans", "sans-serif"]
+        },
+        borderRadius: {
+          "DEFAULT": "16px",
+          "lg": "16px",
+          "xl": "28px",
+          "full": "9999px"
+        },
+        letterSpacing: {
+          "tighter": "-0.02em"
+        }
+      },
+    },
+  }
+</script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body class="flex min-h-screen overflow-x-hidden antialiased">
+
+<!-- Sidebar (Shared Component) -->
+<aside class="w-20 hidden md:flex flex-col items-center py-6 gap-8 bg-background-light border-r border-surface-variant/50 fixed h-full z-10">
+  <div class="flex items-center justify-center size-10 shrink-0 rounded-full bg-primary text-white">
+    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">partly_cloudy_day</span>
+  </div>
+  <nav class="flex flex-col gap-6">
+    <a class="flex flex-col items-center gap-1 group text-primary" href="#">
+      <div class="p-2 rounded-2xl bg-surface group-hover:bg-surface-variant transition-colors">
+        <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">house</span>
+      </div>
+    </a>
+    <a class="flex flex-col items-center gap-1 group text-text-muted hover:text-text-main transition-colors" href="#">
+      <div class="p-2 rounded-2xl group-hover:bg-surface transition-colors">
+        <span class="material-symbols-outlined text-2xl">map</span>
+      </div>
+    </a>
+    <a class="flex flex-col items-center gap-1 group text-text-muted hover:text-text-main transition-colors" href="#">
+      <div class="p-2 rounded-2xl group-hover:bg-surface transition-colors">
+        <span class="material-symbols-outlined text-2xl">bookmark</span>
+      </div>
+    </a>
+  </nav>
+  <div class="mt-auto">
+    <a class="flex flex-col items-center gap-1 group text-text-muted hover:text-text-main transition-colors" href="#">
+      <div class="p-2 rounded-2xl group-hover:bg-surface transition-colors">
+        <span class="material-symbols-outlined text-2xl">settings</span>
+      </div>
+    </a>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="flex-1 md:ml-20 p-6 lg:p-8 max-w-7xl mx-auto w-full">
+
+  <!-- Top Bar -->
+  <header class="flex items-center gap-3 mb-6">
+    <div class="flex-1 max-w-2xl relative">
+      <button id="searchBtn" class="absolute inset-y-0 left-0 pl-4 flex items-center text-text-muted hover:text-primary transition-colors" aria-label="Search">
+        <span class="material-symbols-outlined">search</span>
+      </button>
+      <input id="cityInput" class="w-full h-14 pl-12 pr-4 bg-surface border-none rounded-full text-text-main placeholder:text-text-muted focus:ring-2 focus:ring-primary focus:bg-surface-variant transition-colors font-medium text-[15px]" placeholder="Search city, e.g. Tokyo, Kolkata, Paris..." type="text"/>
+    </div>
+
+    <!-- Unit toggle -->
+    <div class="flex bg-surface rounded-full p-1 shrink-0" role="group" aria-label="Temperature unit">
+      <button id="unitF" class="unit-btn px-3 h-10 rounded-full text-sm font-semibold transition-colors" data-unit="imperial">°F</button>
+      <button id="unitC" class="unit-btn px-3 h-10 rounded-full text-sm font-semibold transition-colors" data-unit="metric">°C</button>
+    </div>
+
+    <!-- Use my location -->
+    <button id="locationBtn" class="p-3 bg-surface hover:bg-surface-variant rounded-full text-text-main transition-colors shrink-0" title="Use my current location" aria-label="Use my current location">
+      <span class="material-symbols-outlined">my_location</span>
+    </button>
+
+    <!-- Mobile menu trigger -->
+    <button class="md:hidden p-3 bg-surface rounded-full text-text-main shrink-0">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
+  </header>
+
+  <!-- Error banner -->
+  <div id="errorBanner" class="hidden mb-6 px-5 py-3 rounded-2xl bg-danger/10 text-danger font-medium text-sm flex items-center gap-2">
+    <span class="material-symbols-outlined text-lg">error</span>
+    <span id="errorText">Something went wrong.</span>
+  </div>
+
+  <!-- Loading state -->
+  <div id="loadingState" class="hidden flex flex-col items-center justify-center py-24 gap-4 text-text-muted">
+    <div class="loader"></div>
+    <p class="font-medium">Fetching weather data…</p>
+  </div>
+
+  <!-- Bento Grid -->
+  <div id="dashboardGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-min">
+
+    <!-- Column 1 -->
+    <div class="flex flex-col gap-4">
+
+      <!-- Current Temp Hero -->
+      <div class="bento-box flex flex-col items-center justify-center py-10 relative overflow-hidden">
+        <div class="absolute top-4 right-4 text-accent">
+          <span id="heroIcon" class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">sunny</span>
+        </div>
+        <h2 id="cityName" class="text-xl font-display font-medium text-text-muted mb-2">Search for a city</h2>
+        <div class="flex items-start">
+          <h1 id="currentTemp" class="font-display font-semibold text-96 tracking-tighter text-text-main">—</h1>
+          <span class="font-display font-medium text-4xl mt-4">°</span>
+        </div>
+        <p id="currentDesc" class="text-lg font-medium text-text-main mt-2">—</p>
+        <div class="flex gap-4 mt-2 text-text-muted font-medium">
+          <span>H: <span id="tempHigh">—°</span></span>
+          <span>L: <span id="tempLow">—°</span></span>
+        </div>
+      </div>
+
+      <!-- 24hr Micro-chart -->
+      <div class="bento-box">
+        <h3 class="font-display font-medium text-xl mb-6">24-Hour Forecast</h3>
+        <div id="hourlyChartWrap" class="relative h-32 w-full">
+          <svg id="hourlyChart" class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 400 100"></svg>
+          <div id="hourlyLabels" class="absolute bottom-0 w-full flex justify-between text-[13px] font-medium text-text-muted pt-2 border-t border-surface-variant"></div>
+          <div id="hourlyFloatingTemp" class="absolute text-[13px] font-bold text-primary"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2 -->
+    <div class="flex flex-col gap-4 xl:row-span-2">
+      <!-- 5-Day Forecast -->
+      <div class="bento-box h-full flex flex-col">
+        <h3 class="font-display font-medium text-xl mb-4">5-Day Forecast</h3>
+        <div id="forecastList" class="flex flex-col gap-2 flex-1"></div>
+      </div>
+    </div>
+
+    <!-- Column 3 -->
+    <div class="flex flex-col gap-4">
+      <!-- Radar Preview -->
+      <a id="radarLink" class="bento-box p-0 relative h-48 overflow-hidden group block" href="https://openweathermap.org/weathermap" target="_blank" rel="noopener">
+        <div class="absolute inset-0 bg-surface-variant/50 z-10 group-hover:bg-transparent transition-colors duration-300"></div>
+        <div id="radarImage" class="absolute inset-0 bg-cover bg-center bg-surface-variant"></div>
+        <div class="absolute bottom-4 left-4 z-20 flex items-center gap-2 bg-surface/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm text-sm font-medium">
+          <span class="material-symbols-outlined text-lg text-primary">radar</span>
+          View Rain Radar
+        </div>
+      </a>
+
+      <!-- Metrics Grid -->
+      <div class="grid grid-cols-2 gap-4">
+        <!-- UV Index -->
+        <div class="bento-box aspect-square flex flex-col justify-between">
+          <div class="flex items-center gap-2 text-text-muted">
+            <span class="material-symbols-outlined text-xl">light_mode</span>
+            <span class="text-[13px] font-medium uppercase tracking-wider">UV Index</span>
+          </div>
+          <div>
+            <div id="uvValue" class="font-display text-4xl font-medium mb-1">—</div>
+            <div id="uvLabel" class="text-sm font-medium text-text-main">—</div>
+          </div>
+          <div class="w-full h-2 rounded-full bg-surface-variant mt-2 overflow-hidden">
+            <div id="uvBar" class="h-full w-0 bg-accent rounded-full transition-all duration-500"></div>
+          </div>
+        </div>
+
+        <!-- Humidity -->
+        <div class="bento-box aspect-square flex flex-col justify-between">
+          <div class="flex items-center gap-2 text-text-muted">
+            <span class="material-symbols-outlined text-xl">humidity_percentage</span>
+            <span class="text-[13px] font-medium uppercase tracking-wider">Humidity</span>
+          </div>
+          <div>
+            <div class="font-display text-4xl font-medium mb-1"><span id="humidityValue">—</span><span class="text-2xl">%</span></div>
+            <div id="dewPointNote" class="text-sm font-medium text-text-muted">—</div>
+          </div>
+        </div>
+
+        <!-- Wind -->
+        <div class="bento-box aspect-square flex flex-col justify-between">
+          <div class="flex items-center gap-2 text-text-muted">
+            <span class="material-symbols-outlined text-xl">air</span>
+            <span class="text-[13px] font-medium uppercase tracking-wider">Wind</span>
+          </div>
+          <div>
+            <div class="font-display text-4xl font-medium mb-1"><span id="windSpeedValue">—</span><span id="windUnit" class="text-xl ml-1">mph</span></div>
+            <div class="flex items-center gap-2 mt-2">
+              <div class="w-6 h-6 rounded-full border border-surface-variant flex items-center justify-center text-text-muted text-xs">
+                <span id="windArrow" class="material-symbols-outlined text-[14px]">arrow_upward</span>
+              </div>
+              <span id="windDirection" class="text-sm font-medium text-text-main">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visibility -->
+        <div class="bento-box aspect-square flex flex-col justify-between">
+          <div class="flex items-center gap-2 text-text-muted">
+            <span class="material-symbols-outlined text-xl">visibility</span>
+            <span class="text-[13px] font-medium uppercase tracking-wider">Visibility</span>
+          </div>
+          <div>
+            <div class="font-display text-4xl font-medium mb-1"><span id="visibilityValue">—</span><span id="visibilityUnit" class="text-xl ml-1">mi</span></div>
+            <div id="visibilityNote" class="text-sm font-medium text-text-muted">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state, shown before the first search -->
+  <div id="emptyState" class="flex flex-col items-center justify-center py-24 gap-3 text-text-muted text-center">
+    <span class="material-symbols-outlined text-6xl text-surface-variant">partly_cloudy_day</span>
+    <p class="font-medium">Search for a city or use your location to see live weather.</p>
+  </div>
+
+  <footer class="text-center text-xs text-text-muted mt-10 pb-4">
+    Weather data by <a class="text-primary hover:underline" href="https://openweathermap.org/" target="_blank" rel="noopener">OpenWeatherMap</a>
+  </footer>
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
